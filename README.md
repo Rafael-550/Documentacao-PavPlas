@@ -1,10 +1,16 @@
 # 🛒 PavPlas — Gateway de Pagamento
 
-Sistema em desenvolvimento para **automação do processo de vendas, pedidos, estoque e pagamentos da PavPlas**, desenvolvido como projeto acadêmico do curso de **Gestão da Tecnologia da Informação — Fatec Barueri**. Site: https://www.pavplas.com.br/
+Sistema em desenvolvimento para **automação do processo de vendas, pedidos, estoque e pagamentos da PavPlas**, desenvolvido como projeto acadêmico do curso de **Gestão da Tecnologia da Informação — Fatec Barueri**.
 
 > 🚧 **Status: Em desenvolvimento**
 >
-> O projeto contempla a implementação da base do sistema comercial e de controle operacional, enquanto funcionalidades como integração com gateway de pagamento, ERP, logística e processamento financeiro automatizado fazem parte do cenário **To-Be** e das próximas etapas do projeto.
+> O projeto contempla a implementação da base do sistema comercial e de controle operacional, enquanto funcionalidades como integração com gateway de pagamento e processamento financeiro automatizado fazem parte do cenário **To-Be** e das próximas etapas do projeto.
+
+### Aplicação em produção
+
+- **Site:** https://www.pavplas.com.br/
+
+O frontend é publicado na Vercel, o backend Express no Render e o banco PostgreSQL no Supabase. As etapas de interface do checkout não significam que o processamento por gateway de pagamento já esteja integrado.
 
 ---
 
@@ -167,6 +173,61 @@ Funcionalidades implementadas ou em implementação no projeto atual:
 
 ---
 
+## 🏢 Área administrativa
+
+O painel administrativo reúne os principais processos operacionais da empresa:
+
+- **Dashboard de estoque:** visão da quantidade de produtos, distribuição por categoria, itens com estoque baixo ou zerado e movimentações recentes;
+- **Produtos e categorias:** cadastro, consulta e edição de produtos, incluindo nome, SKU, categoria, preço, saldo, descrição e imagem;
+- **Movimentações e auditoria:** registro de entradas e saídas, histórico com filtros e identificação das alterações realizadas;
+
+---
+
+## 🔄 Integração entre os produtos administrativos e a loja
+
+Os produtos da loja comercial não são cadastrados em uma lista separada. A área administrativa e a loja consultam os dados de produtos persistidos no mesmo banco PostgreSQL:
+
+```text
+Cadastro/edição no painel administrativo
+              │
+              ▼
+       API autenticada /api/products
+              │
+              ▼
+       Banco PostgreSQL (Product)
+              │
+              ▼
+       API pública /api/public/products
+              │
+              ▼
+        Catálogo da loja comercial
+```
+
+O fluxo funciona da seguinte forma:
+
+1. Um usuário autorizado cadastra ou edita o produto no painel; os dados são gravados pela API no banco compartilhado.
+2. A loja busca o catálogo no endpoint público `GET /api/public/products`, sem expor o acesso administrativo ou as credenciais do banco.
+3. A API envia para a loja os produtos com saldo maior que zero, incluindo nome, SKU, categoria, preço, quantidade, descrição, imagem e aplicação.
+4. O catálogo usa esses dados para exibir os produtos, permitir pesquisa e filtro por categoria e atualizar a disponibilidade apresentada ao cliente.
+
+Não há uma ação separada de “publicar na loja”: produtos com quantidade maior que zero são incluídos automaticamente no catálogo; produtos sem saldo não são retornados pelo endpoint público. A loja consulta novamente a API periodicamente e quando a janela do navegador volta ao foco. A API mantém um cache temporário de 30 segundos, portanto alterações podem levar alguns instantes para aparecer. Se o saldo mudar enquanto um item estiver no carrinho, a loja atualiza os dados do item e limita a quantidade ao saldo disponível.
+
+---
+
+## 🛍️ Loja comercial disponível
+
+- Catálogo atualizado a partir dos produtos disponíveis no estoque administrativo;
+- Pesquisa por nome, SKU, categoria, descrição ou aplicação;
+- Filtro por categoria e ordenação por nome, preço ou disponibilidade;
+- Página de detalhes com informações e saldo do produto;
+- Carrinho com inclusão, remoção e ajuste de quantidades, mantendo os itens no navegador;
+- Cupons demonstrativos e consulta de CEP para estimativa de entrega;
+- Interface de checkout organizada em etapas de endereço, entrega, pagamento, revisão e conclusão.
+
+O preço e o prazo de frete exibidos atualmente são demonstrativos, não uma cotação de transportadora. As etapas de checkout não representam integração com gateway: processamento real por PIX, boleto ou cartão continua planejado.
+
+---
+
 ## 🛒 E-commerce
 
 Funcionalidades previstas no modelo To-Be:
@@ -294,13 +355,10 @@ A solução considera diferentes perfis de acesso para aplicar o princípio do m
 
 | Perfil | Função principal |
 |---|---|
+| **Cliente** | Consulta dados pessoais, comprar produtos, acompanhar pedidos (Faz parte da área comercial) |
 | **Administrador** | Gerenciar usuários, permissões e configurações |
-| **Comercial** | Acompanhar pedidos e operações comerciais |
-| **Financeiro** | Acompanhar transações, conciliação e operações financeiras |
-| **Estoque/Expedição** | Consultar estoque, separar pedidos e acompanhar envios |
-| **Faturamento** | Processos fiscais e emissão de documentos |
-| **Transportadora** | Operações relacionadas à entrega |
-| **Cliente** | Comprar produtos e acompanhar pedidos |
+| **Consultor** | Consulta as principais funcionalidades do sistema |
+| **Fornecedor** | Fornece a matéria prima para fabricação dos produtos |
 
 ---
 
@@ -321,6 +379,7 @@ A solução considera diferentes perfis de acesso para aplicar o princípio do m
 - **TypeScript**
 - **Prisma ORM**
 - **JWT**
+- **Supabase Auth** — validação de credenciais de usuários
 
 ### Banco de dados
 
@@ -345,6 +404,52 @@ A solução considera diferentes perfis de acesso para aplicar o princípio do m
 - **BPMN**
 - **UML**
 - **DER**
+
+---
+
+## 🧭 Aplicação atualmente implementada
+
+Além do escopo acadêmico e do modelo To-Be, este repositório contém uma aplicação comercial pública e uma área administrativa integradas a uma API Express, Prisma e PostgreSQL.
+
+### Área comercial
+
+- Página inicial, produtos industriais, serviços, sobre, contato e perguntas frequentes;
+- Catálogo da loja carregado pela API, com pesquisa e filtro por categoria;
+- Detalhes de produtos, disponibilidade e inclusão no carrinho;
+- Carrinho com alteração de quantidades, remoção de itens e persistência no navegador;
+- Cupons demonstrativos e consulta de CEP;
+- Etapas de interface para endereço, entrega, pagamento, revisão e sucesso.
+
+O frete e o prazo exibidos no carrinho são demonstrativos, não uma cotação de transportadora. As etapas do checkout também não representam uma integração concluída com gateway; PIX, boleto, cartão e confirmação real de pagamento permanecem no roadmap.
+
+Principais rotas comerciais:
+
+```text
+/
+/catalogo
+/produtos
+/produtos/:id
+/servicos
+/loja
+/loja/produto/:id
+/loja/carrinho
+/loja/checkout/endereco
+/loja/checkout/entrega
+/loja/checkout/pagamento
+/loja/checkout/revisao
+/loja/checkout/sucesso
+/sobre
+/contato
+/perguntas-frequentes
+```
+
+### Backend e dados
+
+- API REST em Node.js e Express;
+- Persistência PostgreSQL via Prisma ORM, hospedada no Supabase;
+- Supabase Auth para validar senhas e vincular usuários do sistema;
+- Rotas administrativas protegidas por autenticação e autorização;
+- Catálogo público disponibilizado pelo backend, sem expor credenciais do banco ao frontend.
 
 ---
 
